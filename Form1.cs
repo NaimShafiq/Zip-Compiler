@@ -22,47 +22,90 @@ namespace Zip_Compiler
         bool isFolder = false;
         private void button2_Click(object sender, EventArgs e)
         {
-            DialogResult result = saveFileDialog1.ShowDialog();
-            if (result == DialogResult.OK)
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
             {
-                string zipFileName = Path.ChangeExtension(saveFileDialog1.FileName, "zip");
-
-                using (ZipArchive zip = ZipFile.Open(zipFileName, ZipArchiveMode.Create))
+                saveFileDialog.Filter = "ZIP files (*.zip)|*.zip";
+                DialogResult result = saveFileDialog.ShowDialog();
+                if (result == DialogResult.OK)
                 {
-                    foreach (string folder in listBox1.Items)
+                    string zipFileName = saveFileDialog.FileName;
+
+                    using (ZipArchive zip = ZipFile.Open(zipFileName, ZipArchiveMode.Create))
                     {
                         string directoryToSkip = "C:\\MyFolder\\SubfolderToSkip"; // Specify the directory to skip here
-                        ZipDirectory(zip, folder, Path.GetFileName(folder), directoryToSkip);
+                        foreach (string folder in listBox1.Items)
+                        {
+                            if (folder != directoryToSkip && !IsSubfolderOf(folder, directoryToSkip))
+                            {
+                                ZipDirectory(zip, folder, Path.GetFileName(folder), directoryToSkip);
+                            }
+                        }
+                    }
+
+                    MessageBox.Show("ZIP file created successfully!");
+                }
+            }
+        }
+
+        private bool IsSubfolderOf(string folderPath, string parentFolderPath)
+        {
+            DirectoryInfo folderInfo = new DirectoryInfo(folderPath);
+            DirectoryInfo parentFolderInfo = new DirectoryInfo(parentFolderPath);
+
+            while (folderInfo.Parent != null)
+            {
+                if (folderInfo.Parent.FullName == parentFolderInfo.FullName)
+                {
+                    return true;
+                }
+
+                folderInfo = folderInfo.Parent;
+            }
+
+            return false;
+        }
+
+
+        private void ZipDirectory(ZipArchive zip, string sourcePath, string entryPrefix, string directoryToSkip)
+        {
+            try
+            {
+                if (File.Exists(sourcePath))
+                {
+                    // If the source path is a file, add it to the ZIP archive
+                    string entryName = Path.Combine(entryPrefix, Path.GetFileName(sourcePath));
+                    zip.CreateEntryFromFile(sourcePath, entryName, CompressionLevel.Optimal);
+                }
+                else if (Directory.Exists(sourcePath))
+                {
+                    // If the source path is a directory, add its contents to the ZIP archive
+                    string[] files = Directory.GetFiles(sourcePath);
+                    foreach (string file in files)
+                    {
+                        string entryName = Path.Combine(entryPrefix, Path.GetFileName(file));
+                        zip.CreateEntryFromFile(file, entryName, CompressionLevel.Optimal);
+                    }
+
+                    string[] subFolders = Directory.GetDirectories(sourcePath);
+                    foreach (string subFolder in subFolders)
+                    {
+                        if (subFolder != directoryToSkip && !IsSubfolderOf(subFolder, directoryToSkip))
+                        {
+                            string entryName = Path.Combine(entryPrefix, Path.GetFileName(subFolder));
+                            ZipDirectory(zip, subFolder, entryName, directoryToSkip);
+                        }
                     }
                 }
-
-                MessageBox.Show("ZIP file created successfully!");
-            }
-        }
-
-
-        private void ZipDirectory(ZipArchive zip, string sourceFolder, string entryPrefix, string directoryToSkip)
-        {
-            string[] files = Directory.GetFiles(sourceFolder);
-            foreach (string file in files)
-            {
-                string entryName = Path.Combine(entryPrefix, Path.GetFileName(file));
-                zip.CreateEntryFromFile(file, entryName, CompressionLevel.Optimal);
-            }
-
-            string[] subFolders = Directory.GetDirectories(sourceFolder);
-            foreach (string subFolder in subFolders)
-            {
-                if (subFolder.Equals(directoryToSkip, StringComparison.OrdinalIgnoreCase))
+                else
                 {
-                    continue; // Skip the directory
+                    MessageBox.Show("Source path does not exist: " + sourcePath);
                 }
-
-                string entryName = Path.Combine(entryPrefix, Path.GetFileName(subFolder));
-                ZipDirectory(zip, subFolder, entryName, directoryToSkip);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An error occurred while zipping the directory: " + ex.Message);
             }
         }
-
 
 
         private void button1_Click(object sender, EventArgs e)
@@ -85,11 +128,11 @@ namespace Zip_Compiler
             if (result == DialogResult.OK)
             {
                 string[] files = openFileDialog1.FileNames;
-                listBox1.Items.Clear(); // Clear existing items in the ListBox
                 listBox1.Items.AddRange(files); // Add the selected file paths to the ListBox
                 isFolder = false;
             }
         }
+
 
         private void button6_Click(object sender, EventArgs e)
         {
