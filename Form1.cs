@@ -33,11 +33,17 @@ namespace Zip_Compiler
                     using (ZipArchive zip = ZipFile.Open(zipFileName, ZipArchiveMode.Create))
                     {
                         string directoryToSkip = "C:\\MyFolder\\SubfolderToSkip"; // Specify the directory to skip here
-                        foreach (string folder in listBox1.Items)
+                        foreach (string item in listBox1.Items)
                         {
-                            if (folder != directoryToSkip && !IsSubfolderOf(folder, directoryToSkip))
+                            if (File.Exists(item))
                             {
-                                ZipDirectory(zip, folder, Path.GetFileName(folder), directoryToSkip);
+                                string entryPrefix = Path.GetFileName(item);
+                                ZipDirectory(zip, item, entryPrefix, directoryToSkip);
+                            }
+                            else if (Directory.Exists(item))
+                            {
+                                string entryPrefix = Path.GetFileName(item);
+                                ZipDirectory(zip, item, entryPrefix, directoryToSkip);
                             }
                         }
                     }
@@ -46,6 +52,8 @@ namespace Zip_Compiler
                 }
             }
         }
+
+
 
         private bool IsSubfolderOf(string folderPath, string parentFolderPath)
         {
@@ -73,7 +81,7 @@ namespace Zip_Compiler
                 if (File.Exists(sourcePath))
                 {
                     // If the source path is a file, add it to the ZIP archive
-                    string entryName = Path.Combine(entryPrefix, Path.GetFileName(sourcePath));
+                    string entryName = entryPrefix;
                     zip.CreateEntryFromFile(sourcePath, entryName, CompressionLevel.Optimal);
                 }
                 else if (Directory.Exists(sourcePath))
@@ -82,8 +90,18 @@ namespace Zip_Compiler
                     string[] files = Directory.GetFiles(sourcePath);
                     foreach (string file in files)
                     {
-                        string entryName = Path.Combine(entryPrefix, Path.GetFileName(file));
-                        zip.CreateEntryFromFile(file, entryName, CompressionLevel.Optimal);
+                        if (Path.GetExtension(file).Equals(".txt", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // If the file is a text file, add it directly to the ZIP archive
+                            string entryName = Path.GetFileName(file);
+                            zip.CreateEntryFromFile(file, entryName, CompressionLevel.Optimal);
+                        }
+                        else
+                        {
+                            // If the file is not a text file, recursively add it to the ZIP archive
+                            string entryName = Path.Combine(entryPrefix, Path.GetFileName(file));
+                            ZipDirectory(zip, file, entryName, directoryToSkip);
+                        }
                     }
 
                     string[] subFolders = Directory.GetDirectories(sourcePath);
