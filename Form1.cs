@@ -31,7 +31,8 @@ namespace Zip_Compiler
                 {
                     foreach (string folder in listBox1.Items)
                     {
-                        ZipDirectory(zip, folder, Path.GetFileName(folder));
+                        string directoryToSkip = "C:\\MyFolder\\SubfolderToSkip"; // Specify the directory to skip here
+                        ZipDirectory(zip, folder, Path.GetFileName(folder), directoryToSkip);
                     }
                 }
 
@@ -39,7 +40,8 @@ namespace Zip_Compiler
             }
         }
 
-        private void ZipDirectory(ZipArchive zip, string sourceFolder, string entryPrefix)
+
+        private void ZipDirectory(ZipArchive zip, string sourceFolder, string entryPrefix, string directoryToSkip)
         {
             string[] files = Directory.GetFiles(sourceFolder);
             foreach (string file in files)
@@ -51,10 +53,16 @@ namespace Zip_Compiler
             string[] subFolders = Directory.GetDirectories(sourceFolder);
             foreach (string subFolder in subFolders)
             {
+                if (subFolder.Equals(directoryToSkip, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue; // Skip the directory
+                }
+
                 string entryName = Path.Combine(entryPrefix, Path.GetFileName(subFolder));
-                ZipDirectory(zip, subFolder, entryName);
+                ZipDirectory(zip, subFolder, entryName, directoryToSkip);
             }
         }
+
 
 
         private void button1_Click(object sender, EventArgs e)
